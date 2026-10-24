@@ -211,6 +211,7 @@
 
   // ── 미션 · 퀴즈 (자리) ──
   function renderMission(host) {
+    if (G.renderMission) return G.renderMission(host);
     var games = G.board.games.filter(function (g) { return g.place === "field"; });
     host.innerHTML =
       '<div class="g-stack">' +

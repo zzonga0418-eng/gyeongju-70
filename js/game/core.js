@@ -21,6 +21,7 @@
     adminToken: getItem(KEYS.admin),
     board: null,        // public_board 결과
     adminBoard: null,   // admin_board 결과
+    mission: null,      // mission_board 결과 (글자 찾기 · 단체사진)
     view: "",
     online: true
   };
@@ -140,6 +141,11 @@
           G.board = null;
         }
       }));
+    }
+    // 미션 현황: 미션 탭(팀) 또는 진행자 화면에서
+    var mTok = G.view === "mission" ? G.token() : G.view === "admin" ? G.adminToken : null;
+    if (mTok) {
+      jobs.push(G.rpc("mission_board", { p_token: mTok }).then(function (m) { G.mission = m; }, function () {}));
     }
     if (G.adminToken && G.view === "admin") {
       jobs.push(G.rpc("admin_board", { p_token: G.adminToken }).then(function (b) { G.adminBoard = b; }, function (e) {

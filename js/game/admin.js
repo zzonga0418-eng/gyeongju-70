@@ -15,8 +15,9 @@
   var STATUS = { ready: "대기", live: "진행 중", done: "완료" };
   var PLACE = { field: "현장미션", lodge: "숙소 게임", final: "마무리" };
   // 입력 방식: rank=순위 버튼, count=개수×배점, song=노래방 점수 자릿수 합, points=점수 직접
-  var MODE = { rank: "rank", points: "points", song: "song", letters: "count", proverb: "count", chosung: "count", ox: "points" };
-  var COUNT_LABEL = { letters: "차지한 글자 수", proverb: "맞힌 속담 수", chosung: "성공 횟수" };
+  // 글자 찾기(letters)는 차지할 때 자동으로 점수가 들어가서 직접 입력하지 않는다
+  var MODE = { rank: "rank", points: "points", song: "song", proverb: "count", chosung: "count", ox: "points" };
+  var COUNT_LABEL = { proverb: "맞힌 속담 수", chosung: "성공 횟수" };
 
   function digitSum(n) {
     return String(Math.abs(parseInt(n, 10) || 0)).split("").reduce(function (a, d) { return a + (+d); }, 0);
@@ -64,14 +65,21 @@
     host.innerHTML =
       '<div class="a-wrap">' +
         '<div class="a-tabs" role="tablist">' +
-          tabBtn("run", "게임 진행") + tabBtn("score", "점수표") + tabBtn("set", "설정") +
+          tabBtn("run", "게임") + tabBtn("score", "점수표") + tabBtn("mission", "미션") + tabBtn("poster", "포스터") + tabBtn("set", "설정") +
         "</div>" +
         '<button class="a-switch' + (b.hide_rank ? " on" : "") + '" data-act="a-hide" role="switch" aria-checked="' + b.hide_rank + '">' +
           '<span class="a-switch-knob"></span><span>등수 숨기기 · ' + (b.hide_rank ? "가족 화면에서 순위가 안 보여요" : "가족 화면에 순위가 보여요") + "</span>" +
         "</button>" +
         (ui.msg ? '<p class="a-msg" role="status">' + esc(ui.msg) + "</p>" : "") +
-        (ui.tab === "run" ? runHtml(b) : ui.tab === "score" ? scoreHtml(b) : setHtml(b)) +
+        (ui.tab === "run" ? runHtml(b) : ui.tab === "score" ? scoreHtml(b) : ui.tab === "mission" ? missionHtml() :
+          ui.tab === "poster" ? '<div id="p-editor"></div>' : setHtml(b)) +
       "</div>";
+  }
+
+  function renderAll() {
+    render();
+    var pe = document.getElementById("p-editor");
+    if (pe && G.mountPosterEditor) G.mountPosterEditor(pe);
   }
 
   function tabBtn(id, label) {
@@ -118,7 +126,8 @@
       "</div>";
 
     if (!mode) {
-      html += '<p class="a-note">' + (g.kind === "dadquiz" ? "아빠 퀴즈 진행 화면은 다음 단계에서 열려요." :
+      html += '<p class="a-note">' + (g.kind === "letters" ? "글자를 차지하면 글자당 " + g.unit_points + "점이 자동으로 들어가요. 반려하면 빠져요. 사진 확인은 위쪽 '미션' 탭에서 해요." :
+        g.kind === "dadquiz" ? "아빠 퀴즈 진행 화면은 다음 단계에서 열려요." :
         g.kind === "final" ? "결과 발표 화면은 다음 단계에서 열려요." : "이 미션은 점수 입력이 없어요.") + "</p>";
     } else {
       html += entryHtml(g, mode) + historyHtml(g);
@@ -198,7 +207,7 @@
 
   function scoreHtml(b) {
     var teams = b.teams.slice().sort(function (a, c) { return c.total - a.total; });
-    var games = b.games.filter(function (g) { return MODE[g.kind]; });
+    var games = b.games.filter(function (g) { return MODE[g.kind] || g.kind === "letters"; });
     var cell = function (g, t) {
       var s = activeEntries(g.id).filter(function (e) { return e.team_id === t.id; })
         .reduce(function (a, e) { return a + e.points; }, 0);
@@ -217,6 +226,37 @@
             b.teams.map(function (t) { return "<td>" + cell(g, t) + "</td>"; }).join("") + "</tr>";
         }).join("") +
       "</tbody></table></div>";
+  }
+
+  function missionHtml() {
+    var m = G.mission;
+    if (!m) return '<p class="g-loading">불러오는 중…</p>';
+    var need = m.letters.filter(function (l) { return l.team_id && l.exif !== "ok"; }).length;
+    return '<p class="a-hint">글자 찾기 ' + m.letters.filter(function (l) { return l.team_id; }).length + " / 12 차지" +
+        (need ? ' · <b class="a-warn">확인 필요 ' + need + "장</b>" : "") + "</p>" +
+      '<div class="a-letters">' + m.letters.map(function (l) {
+        var t = l.team_id ? G.teamById(l.team_id) : null;
+        if (!t) return '<div class="a-letter empty"><span class="a-letter-ch">' + esc(l.ch) + '</span><span class="a-hint">비어 있음</span></div>';
+        var check = l.exif !== "ok";
+        return '<div class="a-letter' + (check ? " check" : "") + '">' +
+          '<a class="a-letter-img" href="' + esc(G.imgUrl(l.photo)) + '" target="_blank" rel="noopener"><img src="' + esc(G.imgUrl(l.photo)) + '" alt="' + esc(l.ch) + ' 사진" loading="lazy"></a>' +
+          '<div class="a-letter-info">' +
+            '<span class="a-letter-ch">' + esc(l.ch) + "</span>" +
+            '<span class="a-team">' + G.avatar(t, 22) + "<span>" + esc(t.name) + "</span></span>" +
+            '<span class="g-mono">' + (check ? "⚠️ 확인 필요 · " + (l.taken_at ? "촬영 " + l.taken_at.slice(5, 10).replace("-", ".") : "촬영 정보 없음") : "✓ 11.21 촬영") + "</span>" +
+            '<span class="a-letter-btns">' +
+              (check ? '<button class="g-btn sm" data-act="a-lok" data-i="' + l.idx + '">확인 완료</button>' : "") +
+              '<button class="g-btn sm" data-act="a-reject" data-i="' + l.idx + '">반려</button>' +
+            "</span>" +
+          "</div></div>";
+      }).join("") + "</div>" +
+      '<p class="g-card-title">팀 단체사진</p>' +
+      '<div class="a-groups">' + G.adminBoard.teams.map(function (t) {
+        var ph = m.groups[t.id];
+        return '<div class="a-group">' + (ph ? '<img src="' + esc(G.imgUrl(ph)) + '" alt="" loading="lazy">' : '<span class="a-hint">아직</span>') +
+          '<span class="a-team">' + G.avatar(t, 20) + "<span>" + esc(t.name) + "</span></span></div>";
+      }).join("") + "</div>" +
+      '<p class="a-hint">우리 가족 사진·사진 교체는 "포스터" 탭에서 해요.</p>';
   }
 
   function setHtml(b) {
@@ -282,9 +322,12 @@
     if (act === "a-tab") {
       ui.tab = b.dataset.tab; ui.msg = "";
       if (ui.tab === "set") G.rpc("admin_dad_progress", { p_token: G.adminToken }).then(function (d) { ui.dad = d; render(); }, fail);
-      render();
+      renderAll();
     } else if (act === "a-hide") {
-      G.admin("admin_set_hide_rank", { p_hide: !G.adminBoard.hide_rank }).catch(fail);
+      G.admin("admin_set_hide_rank", { p_hide: !G.adminBoard.hide_rank }).then(function () {
+        // refresh가 끝난 뒤 스위치 상태 반영 (포스터 탭에서도)
+        setTimeout(renderAll, 600);
+      }, fail);
     } else if (act === "a-open") {
       ui.open = ui.open === b.dataset.game ? null : b.dataset.game; ui.msg = "";
       render();
@@ -308,6 +351,12 @@
       var inp = host.querySelector('[data-act="a-val"][data-team="' + b.dataset.team + '"]');
       if (inp) inp.value = dd[b.dataset.team];
       updatePts(b.dataset.team);
+    } else if (act === "a-lok") {
+      G.admin("admin_letter_ok", { p_idx: +b.dataset.i }).catch(fail);
+    } else if (act === "a-reject") {
+      var l = G.mission.letters[+b.dataset.i];
+      if (!window.confirm('"' + l.ch + '" 사진을 반려할까요? 점수가 빠지고 글자가 다시 열려요.')) return;
+      G.admin("admin_reject_letter", { p_idx: +b.dataset.i }).then(function () { say('"' + l.ch + '" 반려 · 다시 열렸어요'); }, fail);
     } else if (act === "a-save") saveResults();
     else if (act === "a-toggle") G.admin("admin_entry_toggle", { p_entry: +b.dataset.id }).catch(fail);
     else if (act === "a-rp-save") {
@@ -341,8 +390,10 @@
   G.on("change", function () {
     var a = document.activeElement;
     if (a && host.contains(a) && a.tagName === "INPUT") return;
-    render();
+    // 포스터 편집은 자체적으로 다시 그린다 (4초마다 새로 그리지 않게)
+    if (ui.tab === "poster" && document.getElementById("p-editor")) return;
+    renderAll();
   });
-  G.on("view", function (v) { if (v === "admin") { ui.msg = ""; render(); } });
-  render();
+  G.on("view", function (v) { if (v === "admin") { ui.msg = ""; renderAll(); } });
+  renderAll();
 })();
