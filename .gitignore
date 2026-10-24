@@ -3,3 +3,6 @@ naver_api.txt
 *.env
 .env*
 __pycache__/
+
+# 내 PC 시험용 (퀴즈 질문 등 비공개 자료)
+dev/
