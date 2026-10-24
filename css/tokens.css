@@ -1,0 +1,48 @@
+/*
+ * 가족 사이트 공통 디자인 토큰 — 일정 탭 · 게임 탭 · 입장 화면이 함께 쓴다.
+ * 원본 디자인: Claude Design "Family Trip App" (굵은 잉크 테두리 + 딱딱한 그림자 + 파스텔 원색)
+ */
+@import url("https://fonts.googleapis.com/css2?family=Jua&family=Space+Mono:wght@400;700&display=swap");
+@import url("https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css");
+
+:root {
+  /* 색 */
+  --ink: #2B2B2B;
+  --paper: #F4EFEA;       /* 앱 바탕 */
+  --desk: #E7E0D6;        /* 앱 바깥 바탕 */
+  --white: #FFFFFF;
+  --butter: #FFD93D;      /* 강조·1순위 */
+  --sky: #7CC8FF;
+  --pink: #FF9EC4;
+  --mint: #9EE6C3;
+  --lilac: #C9B6FF;
+  --sand: #E6DED2;        /* 비활성 */
+  --map-a: #E9F5FF;
+  --map-b: #DDEFFC;
+  --warn: #C2410C;        /* "확인 필요" 글자 */
+  --link: #1F6FB2;
+
+  /* 팀 색 (게임 탭) */
+  --team-p: var(--butter);
+  --team-u: var(--mint);
+  --team-o: var(--lilac);
+  --team-w: var(--pink);
+
+  /* 글꼴 */
+  --f-display: "Jua", "NanumBarunGothic", sans-serif;     /* 제목·버튼 */
+  --f-body: "NanumBarunGothic", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-mono: "Space Mono", ui-monospace, monospace;        /* 시간·라벨 */
+
+  /* 선·모서리·그림자 */
+  --line: 2px solid var(--ink);
+  --line-thin: 1.5px solid var(--ink);
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 18px;
+  --r-pill: 999px;
+  --shadow-2: 2px 2px 0 var(--ink);
+  --shadow-3: 3px 3px 0 var(--ink);
+  --shadow-4: 4px 4px 0 var(--ink);
+  --press-3: translate(3px, 3px);
+}

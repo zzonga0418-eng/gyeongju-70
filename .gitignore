@@ -1,0 +1,5 @@
+# API 키·개인 파일은 절대 올리지 않는다
+naver_api.txt
+*.env
+.env*
+__pycache__/
