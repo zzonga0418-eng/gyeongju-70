@@ -18,6 +18,8 @@
   // 글자 찾기(letters)는 차지할 때 자동으로 점수가 들어가서 직접 입력하지 않는다
   var MODE = { rank: "rank", points: "points", song: "song", proverb: "count", chosung: "count", ox: "points" };
   var COUNT_LABEL = { proverb: "맞힌 속담 수", chosung: "성공 횟수" };
+  // 진행 화면(live.js)이 있는 게임
+  var LIVE = { g5: "proverb", g7: "ox", g8: "chosung", dad: "dadquiz", final: "final" };
 
   function digitSum(n) {
     return String(Math.abs(parseInt(n, 10) || 0)).split("").reduce(function (a, d) { return a + (+d); }, 0);
@@ -123,16 +125,60 @@
         (g.place === "final" ? "" :
           '<span class="a-move"><button class="g-btn sm" data-act="a-move" data-dir="-1"' + (first ? " disabled" : "") + ' aria-label="위로">▲</button>' +
           '<button class="g-btn sm" data-act="a-move" data-dir="1"' + (last ? " disabled" : "") + ' aria-label="아래로">▼</button></span>') +
-      "</div>";
+      "</div>" +
+      (LIVE[g.id] ? '<button class="g-btn g-btn-wide g-btn-dark" data-act="a-live" data-kind="' + LIVE[g.id] + '">진행 화면 열기 ▶</button>' : "");
 
     if (!mode) {
       html += '<p class="a-note">' + (g.kind === "letters" ? "글자를 차지하면 글자당 " + g.unit_points + "점이 자동으로 들어가요. 반려하면 빠져요. 사진 확인은 위쪽 '미션' 탭에서 해요." :
-        g.kind === "dadquiz" ? "아빠 퀴즈 진행 화면은 다음 단계에서 열려요." :
-        g.kind === "final" ? "결과 발표 화면은 다음 단계에서 열려요." : "이 미션은 점수 입력이 없어요.") + "</p>";
+        g.kind === "dadquiz" ? "문제는 진행 화면에서 번호를 누를 때 처음 열려요. 맞힌 팀 점수도 진행 화면에서 줘요." :
+        g.kind === "final" ? "발표 전에 경품을 등록해 두세요. 점수 숫자는 발표 화면에서 처음 공개돼요." : "이 미션은 점수 입력이 없어요.") + "</p>" +
+        (g.kind === "dadquiz" ? dadPhotosHtml() : g.kind === "final" ? prizesHtml() : "") +
+        (g.kind === "dadquiz" ? historyHtml(g) : "");
     } else {
       html += entryHtml(g, mode) + historyHtml(g);
     }
     return html + "</div>";
+  }
+
+  // 아빠 퀴즈 9~13번 옛날 사진 (질문은 안 보이고 번호만)
+  function dadPhotosHtml() {
+    var has = ui.dadPhotos || [];
+    var out = '<p class="a-hint">9~13번(추억 질문)에 옛날 사진을 붙일 수 있어요. 질문 내용은 보이지 않아요.</p><div class="p-slots">';
+    for (var n = 9; n <= 13; n++) {
+      var on = has.indexOf(n) >= 0;
+      out += '<button class="p-slot' + (on ? " on" : "") + '" data-act="a-dqphoto" data-n="' + n + '"><span class="p-slot-l">Q' + n + '</span><span class="g-mono">' + (on ? "사진 있음" : "사진 넣기") + "</span>" +
+        (on ? '<span class="p-slot-x" data-act="a-dqphoto-x" data-n="' + n + '" role="button">빼기</span>' : "") + "</button>";
+    }
+    return out + "</div>";
+  }
+
+  function prizesHtml() {
+    var rv = ui.reveal;
+    if (!rv) return '<p class="g-loading">경품 불러오는 중…</p>';
+    return '<p class="g-card-title">경품 (' + rv.prizes.length + "개)</p>" +
+      '<div class="a-prizes">' + rv.prizes.map(function (z) {
+        var by = z.picked_by && G.teamById(z.picked_by);
+        return '<div class="a-prize">' +
+          (z.photo ? '<img src="' + esc(G.imgUrl(z.photo)) + '" alt="">' : '<span class="a-prize-ph">사진</span>') +
+          '<span class="a-prize-name">' + esc(z.name) + (by ? '<span class="g-mono">→ ' + esc(by.name) + "</span>" : "") + "</span>" +
+          (by ? '<button class="g-btn sm" data-act="a-prize-unpick" data-id="' + z.id + '">고른 것 취소</button>'
+              : '<button class="g-btn sm" data-act="a-prize-photo" data-id="' + z.id + '">사진</button>' +
+                '<button class="g-btn sm" data-act="a-prize-del" data-id="' + z.id + '">삭제</button>') +
+        "</div>";
+      }).join("") + "</div>" +
+      '<div class="g-row"><input id="a-prize-name" class="g-input" maxlength="40" placeholder="경품 이름 (예: 한우 선물세트)">' +
+        '<button class="g-btn" data-act="a-prize-add">추가</button></div>' +
+      '<button class="g-btn sm" data-act="a-reveal-reset">발표 화면 처음부터</button>';
+  }
+
+  function loadSimilar() {
+    G.rpc("admin_similar_view", { p_token: G.adminToken }).then(function (v) { ui.similar = v; render(); }, function () {});
+  }
+
+  function loadPanelData(g) {
+    if (!g) return;
+    if (g.kind === "dadquiz") G.rpc("admin_dadq_view", { p_token: G.adminToken }).then(function (d) { ui.dadPhotos = d.photos || null; render(); }, function () {});
+    if (g.kind === "final") G.rpc("admin_reveal_view", { p_token: G.adminToken }).then(function (d) { ui.reveal = d; render(); }, function () {});
   }
 
   function entryHtml(g, mode) {
@@ -256,7 +302,33 @@
         return '<div class="a-group">' + (ph ? '<img src="' + esc(G.imgUrl(ph)) + '" alt="" loading="lazy">' : '<span class="a-hint">아직</span>') +
           '<span class="a-team">' + G.avatar(t, 20) + "<span>" + esc(t.name) + "</span></span></div>";
       }).join("") + "</div>" +
-      '<p class="a-hint">우리 가족 사진·사진 교체는 "포스터" 탭에서 해요.</p>';
+      '<p class="a-hint">우리 가족 사진·사진 교체는 "포스터" 탭에서 해요.</p>' +
+      similarHtml();
+  }
+
+  // M2 사진 유사도: 예시 사진 · 배정 방식 · 팀 사진 · 비교 이미지
+  function similarHtml() {
+    var v = ui.similar;
+    if (!v) return '<p class="g-loading">사진 유사도 불러오는 중…</p>';
+    var exById = {};
+    v.examples.forEach(function (x, i) { exById[x.id] = i + 1; });
+    return '<p class="g-card-title">사진 유사도 (M2)</p>' +
+      '<div class="a-seg a-seg-2">' +
+        '<button class="a-seg-btn' + (v.mode === "same" ? " on" : "") + '" data-act="a-sim-mode" data-m="same">모두 같은 예시</button>' +
+        '<button class="a-seg-btn' + (v.mode === "random" ? " on" : "") + '" data-act="a-sim-mode" data-m="random">팀마다 랜덤</button>' +
+      "</div>" +
+      '<div class="a-examples">' + v.examples.map(function (x, i) {
+        return '<div class="a-example"><img src="' + esc(G.imgUrl(x.path)) + '" alt=""><span class="g-mono">예시 ' + (i + 1) + "</span>" +
+          '<button class="g-btn sm" data-act="a-sim-del" data-id="' + x.id + '">삭제</button></div>';
+      }).join("") +
+      '<button class="a-example add" data-act="a-sim-add">＋ 예시 사진 추가</button></div>' +
+      '<div class="a-groups">' + G.adminBoard.teams.map(function (t) {
+        var x = v.teams[t.id] || {};
+        return '<div class="a-group">' + (x.photo ? '<img src="' + esc(G.imgUrl(x.photo)) + '" alt="" loading="lazy">' : '<span class="a-hint">아직</span>') +
+          '<span class="a-team">' + G.avatar(t, 20) + "<span>" + esc(t.name) + (x.example && exById[x.example] ? " · 예시 " + exById[x.example] : "") + "</span></span></div>";
+      }).join("") + "</div>" +
+      '<button class="g-btn g-btn-wide g-btn-yellow" data-act="a-sim-compose">비교 이미지 + 채점 프롬프트 만들기</button>' +
+      '<p class="a-hint">만든 이미지를 저장해서 폰의 Claude 앱에 프롬프트와 함께 붙여넣고, 받은 점수를 게임 › 사진 유사도에 넣어요.</p>';
   }
 
   function setHtml(b) {
@@ -278,6 +350,8 @@
   // ── 동작 ──
   function say(text) { ui.msg = text; render(); }
   function fail(e) { say("⚠️ " + (e && e.message ? e.message : "실패했어요")); }
+
+  function currentGameOrNull() { return ui.open && G.adminBoard ? currentGame() : null; }
 
   function currentGame() {
     return G.adminBoard.games.filter(function (g) { return g.id === ui.open; })[0];
@@ -321,6 +395,7 @@
     var g = ui.open && G.adminBoard ? currentGame() : null;
     if (act === "a-tab") {
       ui.tab = b.dataset.tab; ui.msg = "";
+      if (ui.tab === "mission") loadSimilar();
       if (ui.tab === "set") G.rpc("admin_dad_progress", { p_token: G.adminToken }).then(function (d) { ui.dad = d; render(); }, fail);
       renderAll();
     } else if (act === "a-hide") {
@@ -331,6 +406,7 @@
     } else if (act === "a-open") {
       ui.open = ui.open === b.dataset.game ? null : b.dataset.game; ui.msg = "";
       render();
+      loadPanelData(currentGameOrNull());
     } else if (act === "a-status") {
       G.admin("admin_game_update", { p_game: g.id, p_patch: { status: b.dataset.s } }).catch(fail);
     } else if (act === "a-skip") {
@@ -357,6 +433,53 @@
       var l = G.mission.letters[+b.dataset.i];
       if (!window.confirm('"' + l.ch + '" 사진을 반려할까요? 점수가 빠지고 글자가 다시 열려요.')) return;
       G.admin("admin_reject_letter", { p_idx: +b.dataset.i }).then(function () { say('"' + l.ch + '" 반려 · 다시 열렸어요'); }, fail);
+    } else if (act === "a-sim-mode") {
+      G.admin("admin_similar", { p_patch: { mode: b.dataset.m } }).then(loadSimilar, fail);
+    } else if (act === "a-sim-del") {
+      if (!window.confirm("이 예시 사진을 지울까요? 팀 배정이 다시 정해져요.")) return;
+      G.admin("admin_similar", { p_patch: { "delete": +b.dataset.id } }).then(loadSimilar, fail);
+    } else if (act === "a-sim-add") {
+      G.pickPhoto(false).then(function (f) {
+        if (!f) return;
+        say("예시 사진 올리는 중…");
+        return G.uploadPhoto(f, 1600).then(function (path) { return G.admin("admin_similar", { p_patch: { add: path } }); })
+          .then(function () { say("✓ 예시 사진을 추가했어요"); loadSimilar(); });
+      }).catch(fail);
+    } else if (act === "a-sim-compose") {
+      if (G.composeSimilar) G.composeSimilar(ui.similar);
+    } else if (act === "a-live") {
+      if (G.openLive) G.openLive(b.dataset.kind);
+    } else if (act === "a-dqphoto-x") {
+      e.stopPropagation();
+      G.admin("admin_dadq_photo", { p_n: +b.dataset.n, p_path: null }).then(function () { loadPanelData(g); }, fail);
+    } else if (act === "a-dqphoto") {
+      var qn = +b.dataset.n;
+      G.pickPhoto(false).then(function (f) {
+        if (!f) return;
+        say("사진 올리는 중…");
+        return G.uploadPhoto(f, 1400).then(function (path) { return G.admin("admin_dadq_photo", { p_n: qn, p_path: path }); })
+          .then(function () { say("✓ Q" + qn + " 사진을 넣었어요"); loadPanelData(g); });
+      }).catch(fail);
+    } else if (act === "a-prize-add") {
+      var nm = document.getElementById("a-prize-name").value.trim();
+      if (!nm) return say("경품 이름을 써 주세요");
+      G.admin("admin_prize_save", { p_prize: { name: nm } }).then(function () { say("✓ 경품을 추가했어요"); loadPanelData(g); }, fail);
+    } else if (act === "a-prize-del") {
+      if (!window.confirm("이 경품을 지울까요?")) return;
+      G.admin("admin_prize_save", { p_prize: { id: +b.dataset.id, "delete": true } }).then(function () { loadPanelData(g); }, fail);
+    } else if (act === "a-prize-unpick") {
+      G.admin("admin_prize_pick", { p_prize: +b.dataset.id, p_team: null }).then(function () { loadPanelData(g); }, fail);
+    } else if (act === "a-prize-photo") {
+      var pid = +b.dataset.id;
+      G.pickPhoto(false).then(function (f) {
+        if (!f) return;
+        say("사진 올리는 중…");
+        return G.uploadPhoto(f, 900).then(function (path) { return G.admin("admin_prize_save", { p_prize: { id: pid, photo: path } }); })
+          .then(function () { say("✓ 경품 사진을 넣었어요"); loadPanelData(g); });
+      }).catch(fail);
+    } else if (act === "a-reveal-reset") {
+      if (!window.confirm("발표 화면을 처음(시작 화면)으로 돌릴까요? 고른 경품은 그대로예요.")) return;
+      G.admin("admin_reveal_step", { p_step: 0 }).then(function () { say("✓ 발표 화면을 처음으로 돌렸어요"); }, fail);
     } else if (act === "a-save") saveResults();
     else if (act === "a-toggle") G.admin("admin_entry_toggle", { p_entry: +b.dataset.id }).catch(fail);
     else if (act === "a-rp-save") {

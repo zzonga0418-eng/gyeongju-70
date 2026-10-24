@@ -54,7 +54,12 @@
         '<div class="g-card m-card">' +
           '<span class="g-mono">MISSION 02 · 사진 유사도</span>' +
           '<span class="g-h2">예시 사진과 똑같이 찍기</span>' +
-          '<div class="m-example">예시 사진은 진행자가 곧 올려요</div>' +
+          (m.similar && m.similar.example
+            ? '<img class="m-example-img" src="' + esc(G.imgUrl(m.similar.example)) + '" alt="예시 사진">'
+            : '<div class="m-example">예시 사진은 진행자가 곧 올려요</div>') +
+          (m.similar && m.similar.photo ? '<span class="g-mono">우리 팀 사진</span><img class="m-group-img" src="' + esc(G.imgUrl(m.similar.photo)) + '" alt="우리 팀이 찍은 사진">' : "") +
+          (myId && m.similar && m.similar.example ? '<button class="g-btn g-btn-wide m-skybtn" data-act="m-similar"' + (st.busy ? " disabled" : "") + ">" +
+            (m.similar.photo ? "다시 찍어서 올리기" : "따라 찍어서 올리기") + "</button>" : "") +
         "</div>" +
 
         (myId ? '<div class="g-card m-card m-group">' +
@@ -122,6 +127,24 @@
     });
   }
 
+  function similarPhoto() {
+    G.pickPhoto(true).then(function (f) {
+      if (!f) return;
+      st.busy = true;
+      say("사진 올리는 중…");
+      return G.uploadPhoto(f, 1600).then(function (path) {
+        return G.rpc("set_similar_photo", { p_token: G.teamToken, p_path: path });
+      }).then(function () {
+        st.busy = false;
+        say("✓ 따라 찍은 사진을 올렸어요", "ok");
+        G.refresh();
+      });
+    }).catch(function () {
+      st.busy = false;
+      say("올리지 못했어요. 다시 해주세요.", "warn");
+    });
+  }
+
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-act]");
     if (!b || !b.closest("#view-mission")) return;
@@ -133,6 +156,7 @@
       G.emit("change");
     } else if (act === "m-shoot" && st.sel != null && !st.busy) shoot();
     else if (act === "m-group" && !st.busy) groupPhoto();
+    else if (act === "m-similar" && !st.busy) similarPhoto();
     else if (act === "poster-view" && G.openPoster) G.openPoster(false);
   });
 })();
