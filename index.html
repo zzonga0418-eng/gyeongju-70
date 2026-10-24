@@ -9,12 +9,13 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/game.css">
 </head>
 <body>
 <div class="app" id="app">
   <header class="topbar">
     <span class="topbar-title" id="screen-title">여행 일정</span>
-    <span class="topbar-badge">🎂 칠순</span>
+    <span class="topbar-badge" id="topbar-me">🎂 칠순</span>
   </header>
 
   <main class="screen">
@@ -31,6 +32,8 @@
     <section class="view" id="view-quiz" data-title="아빠 퀴즈" hidden>
       <div class="soon"><span class="soon-tag">GAME · 준비 중</span><p class="soon-title">아빠 퀴즈</p><p>칠순잔치 날 저녁에 함께 풀어요.</p></div>
     </section>
+    <!-- 진행자 화면 (탭 없음, 관리자 PIN으로만) -->
+    <section class="view" id="view-admin" data-title="진행자" hidden></section>
   </main>
 
   <nav class="tabbar" aria-label="메뉴">
@@ -45,5 +48,11 @@
 <script src="data/itinerary.js"></script>
 <script src="js/itinerary.js"></script>
 <script src="js/app.js"></script>
+<!-- 게임 탭: 아래가 실패해도 일정 탭은 계속 동작 -->
+<script src="js/config.js"></script>
+<script src="js/sb-rest.js"></script>
+<script src="js/game/core.js"></script>
+<script src="js/game/views.js"></script>
+<script src="js/game/admin.js"></script>
 </body>
 </html>
