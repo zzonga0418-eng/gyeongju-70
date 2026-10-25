@@ -420,8 +420,7 @@
         var s = selected;
         nv.set(0, 1, 0).applyMatrix4(new T.Matrix4().extractRotation(s.mesh.matrix));
         tmp.setFromMatrixPosition(s.mesh.matrix).addScaledVector(nv, CH * 0.78);
-        var facing = tmp.clone().normalize().dot(fv.copy(camera.position).normalize());
-        if (facing < 0.15) { selected = null; bubble.style.display = 'none'; }
+        if (tmp.dot(camera.position) <= R * R) { selected = null; bubble.style.display = 'none'; } // 머리가 지평선 너머로 가면 닫기 (charFacing과 같은 기준)
         else {
           tmp.project(camera);
           bubble.style.left = ((tmp.x + 1) / 2 * w) + 'px';
