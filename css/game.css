@@ -663,6 +663,13 @@
 .ox-ans.o .ox-mark { color: #1F6FB2; }
 .ox-ans.x .ox-mark { color: #E5484D; border-radius: 24px; }
 .ox-ex { font-size: 17px; line-height: 1.5; text-align: center; }
+/* O/X 구호 */
+.ox-call { height: 42vh; min-height: 240px; background: var(--white); border: 3px solid var(--ink); border-radius: var(--r-xl); box-shadow: 6px 6px 0 var(--ink); display: flex; align-items: center; justify-content: center; }
+.ox-call.o { background: var(--sky); }
+.ox-call.x { background: var(--pink); }
+.ox-big { font: 700 180px/1 var(--f-mono); animation: g-pop .35s ease-out; }
+.ox-call.o .ox-big { color: #0B4F8A; }
+.ox-call.x .ox-big { color: #B4233A; }
 /* 초성 */
 .ch-init { font: 400 120px/1 var(--f-display); letter-spacing: .08em; animation: g-pop .5s ease-out; }
 .ch-init.sm { font-size: 72px; }

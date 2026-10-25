@@ -153,32 +153,69 @@
     proverbPaint();
   }
 
-  // ═════ O/X 퀴즈 ═════
+  // ═════ O/X 구호 게임 ═════
+  // 진행자 폰이 "오!" "엑스!"를 소리로 외친다. O·X는 무작위(연속으로 같은 것도 나옴),
+  // 간격은 5초 → 4초 → 3초로 빨라지고, 탈락자가 나오면 진행자가 멈춘다.
+  var OX_PLAN = [[5, 4], [4, 4], [3, 1e9]];   // [간격(초), 그 간격으로 외칠 횟수]
+  var Voice = {
+    ok: "speechSynthesis" in window && "SpeechSynthesisUtterance" in window,
+    say: function (text) {
+      if (!this.ok) return;
+      try {
+        speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = "ko-KR"; u.rate = 1.05; u.volume = 1;
+        var v = speechSynthesis.getVoices().filter(function (x) { return /^ko/i.test(x.lang); })[0];
+        if (v) u.voice = v;
+        speechSynthesis.speak(u);
+      } catch (e) { /* 음성이 안 되는 브라우저 → 화면·효과음만 */ }
+    }
+  };
+  function oxGap(n) {
+    var acc = 0;
+    for (var i = 0; i < OX_PLAN.length; i++) {
+      if (n < acc + OX_PLAN[i][1]) return OX_PLAN[i][0];
+      acc += OX_PLAN[i][1];
+    }
+    return 3;
+  }
   function ox() {
     var s = lv.st;
-    if (!s.no) { s.no = 1; s.secs = 10; }
-    s.revealed = false;
-    s.data = null;
-    paint('<p class="lv-lead">문제를 불러오는 중…</p>');
-    call("admin_ox_get", { p_no: s.no, p_reveal: false }).then(function (d) { s.data = d; oxPaint(); }, fail);
+    if (s.calls == null) { s.calls = 0; s.running = false; s.last = null; s.history = []; }
+    oxPaint();
   }
   function oxPaint() {
-    var s = lv.st, d = s.data;
-    if (!d) return;
-    if (!d.q) { paint('<p class="lv-say">' + (d.total ? "모든 문제를 다 했어요!" : "아직 문제가 없어요") + '</p><button class="lv-link" data-act="ox-prev">◀ 이전 문제</button>'); return; }
-    var ans = s.revealed && d.answer != null;
-    paint('<div class="pv-head"><span class="g-mono">O/X 퀴즈 · ' + s.no + " / " + d.total + '</span><span class="lv-clock sm" id="ox-clock">' + (s.counting ? s.secs : "") + "</span></div>" +
-      '<div class="ox-card"><span class="ox-q">' + esc(d.q) + "</span></div>" +
-      (ans ? '<div class="ox-ans ' + (d.answer ? "o" : "x") + '"><span class="ox-mark">' + (d.answer ? "O" : "X") + "</span>" +
-        (d.explain ? '<span class="ox-ex">' + esc(d.explain) + "</span>" : "") + "</div>" : "") +
-      (!ans ? '<div class="lv-seg">' + [5, 10, 15].map(function (v) {
-          return '<button class="lv-seg-btn' + (s.secs === v && !s.counting ? " on" : "") + '" data-act="ox-secs" data-v="' + v + '">' + v + "초</button>";
-        }).join("") + "</div>" +
-        '<div class="lv-two"><button class="lv-big lv-white" data-act="ox-count"' + (s.counting ? " disabled" : "") + ">카운트다운 ▶</button>" +
-        '<button class="lv-big lv-yellow" data-act="ox-reveal">정답 공개</button></div>'
-        : '<div class="lv-two"><button class="lv-big lv-white" data-act="ox-prev"' + (s.no <= 1 ? " disabled" : "") + '>◀ 이전</button>' +
-          '<button class="lv-big lv-yellow" data-act="ox-next">다음 문제 ▶</button></div>') +
-      '<p class="lv-note">팀별 결과는 진행자 화면 › 게임 › AI O/X 퀴즈에서 넣어요.</p>' + err());
+    var s = lv.st;
+    var hist = s.history.slice(-10).map(function (v) { return v === "o" ? "O" : "X"; }).join(" ");
+    paint(
+      '<p class="lv-lead">진행자 폰이 <b>"오!"</b> <b>"엑스!"</b>를 외쳐요. 구호에 맞는 쪽으로 이동! 틀린 쪽에 있으면 탈락. 5초 → 4초 → 3초 간격으로 빨라져요.</p>' +
+      '<div class="ox-call ' + (s.last || "") + '" id="ox-call"><span class="ox-big">' + (s.last === "o" ? "O" : s.last === "x" ? "X" : "?") + "</span></div>" +
+      '<div class="pv-head"><span class="g-mono">구호 ' + s.calls + "번 · " + (s.running ? "다음까지 " + oxGap(s.calls) + "초" : "멈춤") + '</span><span class="g-mono">' + hist + "</span></div>" +
+      (s.running
+        ? '<button class="lv-big lv-dark" data-act="ox-stop">멈춤 · 탈락자 나왔어요!</button>'
+        : '<div class="lv-two"><button class="lv-big lv-white" data-act="ox-reset"' + (s.calls ? "" : " disabled") + ">처음부터</button>" +
+          '<button class="lv-big lv-yellow" data-act="ox-go">' + (s.calls ? "이어서 계속 ▶" : "시작 ▶") + "</button></div>") +
+      (Voice.ok ? "" : '<p class="lv-note">⚠️ 이 브라우저는 음성을 지원하지 않아요. 크롬으로 열면 소리로 외쳐요. 지금은 화면과 효과음으로만 알려줘요.</p>') +
+      '<p class="lv-note">팀별 결과(살아남은 인원)는 진행자 화면 › 게임 › O/X에서 점수로 넣어요.</p>' + err());
+  }
+  function oxCall() {
+    var s = lv && lv.st;
+    if (!s || !s.running) return;
+    var v = Math.random() < .5 ? "o" : "x";
+    s.last = v; s.calls++; s.history.push(v);
+    Voice.say(v === "o" ? "오!" : "엑스!");
+    Snd.tone(v === "o" ? 880 : 330, .25, "square", 0, .12);
+    oxPaint();
+    lv.timers.push(setTimeout(oxCall, oxGap(s.calls) * 1000));
+  }
+  function oxStart() {
+    var s = lv.st;
+    s.running = true;
+    Voice.say("준비!");          // 버튼을 누른 순간 음성을 깨워 둔다 (아이폰은 이렇게 해야 소리가 남)
+    oxPaint();
+    var el = document.querySelector("#ox-call .ox-big");
+    if (el) el.textContent = "준비";
+    lv.timers.push(setTimeout(oxCall, 2000));
   }
 
   // ═════ 초성 게임 ═════
@@ -190,13 +227,13 @@
   function chPaint() {
     var s = lv.st, unit = game("g8").unit_points || 10;
     if (s.phase === "pick") {
-      paint('<p class="lv-lead">도전할 팀을 골라요. 성공 1번에 ' + unit + "점</p>" +
+      paint('<p class="lv-lead">도전할 팀을 골라요. 제시한 자음으로 시작하는 단어 5개를 10초 안에! 성공 1번에 ' + unit + "점</p>" +
         teamButtons(s.team, function (t) { return "성공 " + (s.tally[t.id] || 0); }) +
         '<button class="lv-big lv-yellow" data-act="ch-draw"' + (s.team ? "" : " disabled") + ">초성 뽑기</button>" +
         '<button class="lv-big lv-white" data-act="ch-save">지금까지 점수 반영</button>' + err());
     } else if (s.phase === "play") {
       paint('<div class="lv-center"><span class="ch-init">' + esc(s.cur.initials) + "</span>" +
-        '<p class="lv-lead">이 초성으로 시작하는 단어 5개!</p><span class="lv-clock" id="ch-clock">10</span></div>' + err());
+        '<p class="lv-lead">이 자음으로 시작하는 단어 5개!</p><span class="lv-clock" id="ch-clock">10</span></div>' + err());
     } else {
       var t = G.teamById(s.team);
       paint('<div class="lv-center"><span class="ch-init sm">' + esc(s.cur.initials) + "</span>" +
@@ -394,16 +431,13 @@
         .then(function () { s.phase = null; s.team = null; proverb(); }, fail);
     } else if (act === "pv-back") { s.phase = null; s.team = null; proverb(); }
 
-    // O/X
-    else if (act === "ox-secs") { s.secs = +b.dataset.v; oxPaint(); }
-    else if (act === "ox-count") {
-      s.counting = true; oxPaint();
-      countdown(s.secs, "ox-clock", function () { s.counting = false; Snd.buzz(); var el = document.getElementById("ox-clock"); if (el) el.textContent = "땡!"; });
-    } else if (act === "ox-reveal") {
-      stopTimers(); s.counting = false;
-      call("admin_ox_get", { p_no: s.no, p_reveal: true }).then(function (d) { s.data = d; s.revealed = true; Snd.fanfare(); oxPaint(); }, fail);
-    } else if (act === "ox-next") { s.no++; ox(); }
-    else if (act === "ox-prev") { s.no = Math.max(1, s.no - 1); ox(); }
+    // O/X 구호
+    else if (act === "ox-go") oxStart();
+    else if (act === "ox-stop") {
+      stopTimers(); s.running = false;
+      if (Voice.ok) try { speechSynthesis.cancel(); } catch (er) { /* 무시 */ }
+      Snd.buzz(); oxPaint();
+    } else if (act === "ox-reset") { s.calls = 0; s.last = null; s.history = []; oxPaint(); }
 
     // 초성
     else if (act === "ch-draw") {
@@ -474,7 +508,7 @@
 
   // ── 진행자 화면에서 여는 입구 ──
   G.openLive = function (kind) {
-    var titles = { proverb: "AI 속담 맞추기", ox: "AI O/X 퀴즈", chosung: "AI 초성 게임", dadquiz: "아빠 퀴즈", final: "결과 발표" };
+    var titles = { proverb: "AI 속담 맞추기", ox: "O/X 구호 게임", chosung: "AI 초성 게임", dadquiz: "아빠 퀴즈", final: "결과 발표" };
     open(kind === "dadquiz" ? "dad" : kind, titles[kind]);
     lv.game = kind === "dadquiz" ? "dad" : kind;
     if (kind === "proverb") proverb();
