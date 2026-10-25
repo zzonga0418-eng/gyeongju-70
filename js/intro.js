@@ -20,11 +20,11 @@
     { id: 'dad', name: '정주', role: '아빠 · 57년생', tags: ['은빛 곱슬머리', '70 파티 머리띠'] },
     { id: 'mom', name: '영옥', role: '엄마 · 62년생', tags: ['단정한 단발', '크림 니트 카라'] },
     { id: 'sister', name: '서연', role: '언니 · 87년생', tags: ['똥머리', '옐로 스트라이프'] },
-    { id: 'hyungbu', name: '인호', role: '형부 · 83년생', tags: ['뻗친 머리', '나이키 나시'] },
+    { id: 'hyungbu', name: '인호', role: '형부 · 84년생', tags: ['뻗친 머리', '나이키 나시'] },
     { id: 'niece', name: '지유', role: '조카 · 8살', tags: ['양갈래 묶음', '네이비 줄무늬'] },
     { id: 'nephew', name: '승유', role: '조카 · 7살', tags: ['바가지 머리', '블랙 맨투맨'] },
     { id: 'oppa', name: '성훈', role: '오빠 · 90년생', tags: ['핑크 머플러', '하트 커플티'] },
-    { id: 'saeonni', name: '아름', role: '새언니 · 92년생', tags: ['브라운 단발', '하트 커플티'] },
+    { id: 'saeonni', name: '아름', role: '새언니 · 91년생', tags: ['브라운 단발', '하트 커플티'] },
     { id: 'me', name: '아연', role: '나 · 94년생', tags: ['앞머리 긴 머리', '버터 옐로 후디'] },
     { id: 'husband', name: '정현', role: '남편 · 91년생', tags: ['덮은 앞머리', '그레이 후디'] }
   ];
