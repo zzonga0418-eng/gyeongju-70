@@ -673,6 +673,11 @@
 /* 초성 */
 .ch-init { font: 400 120px/1 var(--f-display); letter-spacing: .08em; animation: g-pop .5s ease-out; }
 .ch-init.sm { font-size: 72px; }
+.ch-tally { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ch-tally-item { display: flex; align-items: center; gap: 6px; background: var(--white); border: var(--line); border-radius: var(--r-md); padding: 6px 8px; font: 400 14px var(--f-display); min-width: 0; }
+.ch-tally-item span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-tally-item b { font-size: 16px; }
+.lv-team:disabled { opacity: .4; box-shadow: none; }
 .ch-ex { display: flex; flex-direction: column; gap: 4px; background: var(--white); border: var(--line); border-radius: var(--r-md); padding: 10px 14px; font-size: 18px; }
 
 /* 아빠 퀴즈 (디자인 시안: 단계 막대 + 노란 문제 카드) */

@@ -155,8 +155,9 @@
 
   // ═════ O/X 구호 게임 ═════
   // 진행자 폰이 "오!" "엑스!"를 소리로 외친다. O·X는 무작위(연속으로 같은 것도 나옴),
-  // 간격은 5초 → 4초 → 3초로 빨라지고, 탈락자가 나오면 진행자가 멈춘다.
-  var OX_PLAN = [[5, 4], [4, 4], [3, 1e9]];   // [간격(초), 그 간격으로 외칠 횟수]
+  // 첫 구호 뒤에만 5초, 그다음부터는 진행자가 고른 간격. 탈락자가 나오면 진행자가 멈춘다.
+  var OX_FIRST = 5;
+  var OX_GAPS = [1.5, 2, 2.5, 3, 4];
   var Voice = {
     ok: "speechSynthesis" in window && "SpeechSynthesisUtterance" in window,
     say: function (text) {
@@ -171,24 +172,20 @@
       } catch (e) { /* 음성이 안 되는 브라우저 → 화면·효과음만 */ }
     }
   };
-  function oxGap(n) {
-    var acc = 0;
-    for (var i = 0; i < OX_PLAN.length; i++) {
-      if (n < acc + OX_PLAN[i][1]) return OX_PLAN[i][0];
-      acc += OX_PLAN[i][1];
-    }
-    return 3;
-  }
+  function oxGap(n) { return n <= 1 ? OX_FIRST : lv.st.gap; }
   function ox() {
     var s = lv.st;
-    if (s.calls == null) { s.calls = 0; s.running = false; s.last = null; s.history = []; }
+    if (s.calls == null) { s.calls = 0; s.running = false; s.last = null; s.history = []; s.gap = 2; }
     oxPaint();
   }
   function oxPaint() {
     var s = lv.st;
     var hist = s.history.slice(-10).map(function (v) { return v === "o" ? "O" : "X"; }).join(" ");
     paint(
-      '<p class="lv-lead">진행자 폰이 <b>"오!"</b> <b>"엑스!"</b>를 외쳐요. 구호에 맞는 쪽으로 이동! 틀린 쪽에 있으면 탈락. 5초 → 4초 → 3초 간격으로 빨라져요.</p>' +
+      '<p class="lv-lead">진행자 폰이 <b>"오!"</b> <b>"엑스!"</b>를 외쳐요. 구호에 맞는 쪽으로 이동! 틀린 쪽에 있으면 탈락. 첫 구호 뒤에만 5초, 그다음은 아래 간격으로 외쳐요.</p>' +
+      '<div class="lv-seg">' + OX_GAPS.map(function (v) {
+        return '<button class="lv-seg-btn' + (s.gap === v ? " on" : "") + '" data-act="ox-gap" data-v="' + v + '">' + v + "초</button>";
+      }).join("") + "</div>" +
       '<div class="ox-call ' + (s.last || "") + '" id="ox-call"><span class="ox-big">' + (s.last === "o" ? "O" : s.last === "x" ? "X" : "?") + "</span></div>" +
       '<div class="pv-head"><span class="g-mono">구호 ' + s.calls + "번 · " + (s.running ? "다음까지 " + oxGap(s.calls) + "초" : "멈춤") + '</span><span class="g-mono">' + hist + "</span></div>" +
       (s.running
@@ -219,29 +216,57 @@
   }
 
   // ═════ 초성 게임 ═════
+  // 진행자가 자음을 뽑으면 먼저 손 든 팀이 도전 → 10초 안에 단어 5개. 실패하면 다른 팀이 같은 자음에 도전할 수 있다.
   function chosung() {
     var s = lv.st;
-    if (!s.tally) { s.tally = {}; s.phase = "pick"; }
+    if (!s.tally) { s.tally = {}; s.phase = "idle"; }
     chPaint();
   }
   function chPaint() {
     var s = lv.st, unit = game("g8").unit_points || 10;
-    if (s.phase === "pick") {
-      paint('<p class="lv-lead">도전할 팀을 골라요. 제시한 자음으로 시작하는 단어 5개를 10초 안에! 성공 1번에 ' + unit + "점</p>" +
-        teamButtons(s.team, function (t) { return "성공 " + (s.tally[t.id] || 0); }) +
-        '<button class="lv-big lv-yellow" data-act="ch-draw"' + (s.team ? "" : " disabled") + ">초성 뽑기</button>" +
+    var tally = '<div class="ch-tally">' + teams().map(function (t) {
+      return '<span class="ch-tally-item">' + G.avatar(t, 22) + "<span>" + esc(t.name) + '</span><b class="g-mono">' + (s.tally[t.id] || 0) + "</b></span>";
+    }).join("") + "</div>";
+    if (s.phase === "idle") {
+      paint('<p class="lv-lead">자음을 뽑으면 <b>먼저 손 든 팀</b>이 도전해요. 그 자음으로 시작하는 단어 5개를 10초 안에! 성공 1번에 ' + unit + "점</p>" +
+        (s.lastEx ? '<div class="ch-ex"><span class="g-mono">지난 자음 ' + esc(s.lastEx.initials) + " 예시</span><span>" + s.lastEx.words.map(esc).join(" · ") + "</span></div>" : "") +
+        '<button class="lv-big lv-yellow" data-act="ch-draw">자음 뽑기</button>' +
+        '<p class="lv-lead">팀별 성공</p>' + tally +
         '<button class="lv-big lv-white" data-act="ch-save">지금까지 점수 반영</button>' + err());
-    } else if (s.phase === "play") {
+    } else if (s.phase === "shown") {
       paint('<div class="lv-center"><span class="ch-init">' + esc(s.cur.initials) + "</span>" +
+        '<p class="lv-say">손 든 팀을 눌러요!</p></div>' +
+        '<div class="lv-teams">' + teams().map(function (t) {
+          var out = s.failed.indexOf(t.id) >= 0;
+          return '<button class="lv-team" data-act="ch-try" data-team="' + t.id + '"' + (out ? " disabled" : "") + ">" + G.avatar(t, 30) +
+            '<span class="lv-team-name">' + esc(t.name) + "</span>" + (out ? '<span class="g-mono">실패</span>' : "") + "</button>";
+        }).join("") + "</div>" +
+        '<button class="lv-link" data-act="ch-skip">아무도 못 함 · 넘어가기</button>' + err());
+    } else if (s.phase === "play") {
+      var tp = G.teamById(s.team);
+      paint('<div class="lv-center"><span class="ch-init">' + esc(s.cur.initials) + "</span>" +
+        '<p class="lv-say">' + esc(tp ? tp.name : "") + " 도전!</p>" +
         '<p class="lv-lead">이 자음으로 시작하는 단어 5개!</p><span class="lv-clock" id="ch-clock">10</span></div>' + err());
     } else {
-      var t = G.teamById(s.team);
+      var tj = G.teamById(s.team);
       paint('<div class="lv-center"><span class="ch-init sm">' + esc(s.cur.initials) + "</span>" +
-        '<p class="lv-say">땡! ' + esc(t ? t.name : "") + "</p>" +
-        (s.examples ? '<div class="ch-ex"><span class="g-mono">예시 단어</span><span>' + s.examples.map(esc).join(" · ") + "</span></div>" : "") +
+        '<p class="lv-say">땡! ' + esc(tj ? tj.name : "") + "</p>" +
         '<div class="lv-two"><button class="lv-big lv-white" data-act="ch-judge" data-ok="0">실패 ✗</button>' +
         '<button class="lv-big lv-mint" data-act="ch-judge" data-ok="1">성공 ✓</button></div></div>' + err());
     }
+  }
+  // 한 자음이 끝나면(성공·넘어가기) 예시 단어를 받아 둔다 — 다음 화면에서 보여줌
+  function chFinish() {
+    var s = lv.st, c = s.cur;
+    s.phase = "idle";
+    s.lastEx = null;
+    chPaint();
+    var wait = Math.max(0, new Date(c.drawn_at).getTime() + 10500 - Date.now());
+    setTimeout(function () {
+      call("admin_chosung_examples", { p_id: c.id }).then(function (ex) {
+        if (lv && s.phase === "idle") { s.lastEx = { initials: c.initials, words: ex }; chPaint(); }
+      }, function () {});
+    }, wait);
   }
 
   // ═════ 아빠 퀴즈 ═════
@@ -394,7 +419,7 @@
     var act = b.dataset.act, s = lv.st;
     if (act === "lv-close") return close();
     if (act === "lv-mute") { Snd.toggle(); b.textContent = Snd.muted ? "🔇" : "🔊"; return; }
-    if (act === "lv-team") { s.team = b.dataset.team; Snd.pop(); return lv.game === "proverb" ? proverbPaint() : chPaint(); }
+    if (act === "lv-team") { s.team = b.dataset.team; Snd.pop(); return proverbPaint(); }
 
     // 속담
     if (act === "pv-secs") { s.secs = +b.dataset.v; proverbPaint(); }
@@ -433,6 +458,7 @@
 
     // O/X 구호
     else if (act === "ox-go") oxStart();
+    else if (act === "ox-gap") { s.gap = +b.dataset.v; oxPaint(); }
     else if (act === "ox-stop") {
       stopTimers(); s.running = false;
       if (Voice.ok) try { speechSynthesis.cancel(); } catch (er) { /* 무시 */ }
@@ -441,20 +467,20 @@
 
     // 초성
     else if (act === "ch-draw") {
-      call("admin_chosung_draw", { p_team: s.team }).then(function (c) {
-        s.cur = c; s.examples = null; s.phase = "play"; chPaint(); Snd.pop();
-        countdown(10, "ch-clock", function () {
-          Snd.buzz();
-          s.phase = "judge"; chPaint();
-          // 서버 기준 10초가 지나야 받을 수 있어서 살짝 늦게 요청
-          setTimeout(function () {
-            call("admin_chosung_examples", { p_id: c.id }).then(function (ex) { if (lv && s.phase === "judge") { s.examples = ex; chPaint(); } }, function () {});
-          }, 700);
-        });
+      call("admin_chosung_draw", { p_team: null }).then(function (c) {
+        s.cur = c; s.failed = []; s.phase = "shown"; Snd.pop(); chPaint();
       }, fail);
+    } else if (act === "ch-try") {
+      s.team = b.dataset.team; s.phase = "play"; Snd.pop(); chPaint();
+      countdown(10, "ch-clock", function () { Snd.buzz(); s.phase = "judge"; chPaint(); });
     } else if (act === "ch-judge") {
-      if (b.dataset.ok === "1") { s.tally[s.team] = (s.tally[s.team] || 0) + 1; Snd.good(); }
-      s.phase = "pick"; chPaint();
+      if (b.dataset.ok === "1") { s.tally[s.team] = (s.tally[s.team] || 0) + 1; Snd.good(); chFinish(); }
+      else {
+        s.failed.push(s.team);
+        // 모든 팀이 실패하면 다음 자음으로
+        if (s.failed.length >= teams().length) chFinish(); else { s.phase = "shown"; chPaint(); }
+      }
+    } else if (act === "ch-skip") { chFinish();
     } else if (act === "ch-save") {
       var u = game("g8").unit_points || 10;
       var res = teams().filter(function (t) { return s.tally[t.id] != null; })
