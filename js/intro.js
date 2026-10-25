@@ -465,20 +465,42 @@
       mouse.set(((p.clientX - r.left) / r.width) * 2 - 1, -((p.clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(mouse, camera);
     }
+    function charFacing(c) { // 머리가 행성 지평선 너머로 넘어간 캐릭터면 false (뒷줄은 발이 언덕에 가려도 머리는 보임)
+      tmp.setFromMatrixPosition(c.mesh.matrix);
+      nv.copy(tmp).normalize();
+      tmp.addScaledVector(nv, CH * 0.7);
+      return tmp.dot(camera.position) > R * R;
+    }
     function pickChar(ev) { // 투명한 부분은 건너뛰고, 행성 뒤에 가려진 캐릭터는 제외
       setRay(ev);
       var hits = ray.intersectObjects(chars.map(function (c) { return c.mesh; }), false);
-      var g = ray.intersectObject(groundMesh, false)[0];
       for (var i = 0; i < hits.length; i++) {
         var hh = hits[i];
-        if (g && g.distance < hh.distance - 0.05) return null;
         var c = chars.filter(function (c2) { return c2.mesh === hh.object; })[0];
+        if (!charFacing(c)) continue;
         var img = c.mesh.material.map.image;
         if (!img.__ctx) img.__ctx = img.getContext('2d', { willReadFrequently: true });
         var x = Math.min(img.width - 1, Math.floor(hh.uv.x * img.width)), y = Math.min(img.height - 1, Math.floor((1 - hh.uv.y) * img.height));
         if (img.__ctx.getImageData(x, y, 1, 1).data[3] > 0) return c;
       }
-      return null;
+      return nearChar(ev);
+    }
+    // 폰에선 캐릭터가 작고 뒷줄이 앞줄·언덕에 가려져 정확히 누르기 어렵다 → 화면에서 가장 가까운 캐릭터를 고른다
+    function nearChar(ev) {
+      var r = canvas.getBoundingClientRect(), p = ev.changedTouches ? ev.changedTouches[0] : ev;
+      var px = p.clientX - r.left, py = p.clientY - r.top, best = null, bestD = Infinity;
+      chars.forEach(function (c) {
+        if (!charFacing(c)) return;
+        nv.set(0, 1, 0).applyMatrix4(mtx.extractRotation(c.mesh.matrix));
+        var base = new T.Vector3().setFromMatrixPosition(c.mesh.matrix);
+        var mid = base.clone().addScaledVector(nv, CH * 0.5).project(camera);
+        var top = base.clone().addScaledVector(nv, CH).project(camera);
+        var mx = (mid.x + 1) / 2 * r.width, my = (1 - mid.y) / 2 * r.height;
+        var half = Math.abs(((1 - top.y) / 2 * r.height) - my);
+        var d = Math.hypot(px - mx, py - my);
+        if (d < Math.max(28, half * 1.1) && d < bestD) { best = c; bestD = d; }
+      });
+      return best;
     }
     function onTap(ev) {
       var c = pickChar(ev);
