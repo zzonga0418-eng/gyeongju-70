@@ -51,23 +51,12 @@
         '<p class="m-note">카메라가 바로 열려요. 촬영 날짜가 11.21이 아니면 진행자가 한 번 더 확인해요.</p>' +
         (st.msg ? '<p class="m-msg ' + st.kind + '" role="status">' + esc(st.msg) + "</p>" : "") +
 
-        '<div class="g-card m-card">' +
-          '<span class="g-mono">MISSION 02 · 사진 유사도</span>' +
-          '<span class="g-h2">예시 사진과 똑같이 찍기</span>' +
-          (m.similar && m.similar.example
-            ? '<img class="m-example-img" src="' + esc(G.imgUrl(m.similar.example)) + '" alt="예시 사진">'
-            : '<div class="m-example">예시 사진은 진행자가 곧 올려요</div>') +
-          (m.similar && m.similar.photo ? '<span class="g-mono">우리 팀 사진</span><img class="m-group-img" src="' + esc(G.imgUrl(m.similar.photo)) + '" alt="우리 팀이 찍은 사진">' : "") +
-          (myId && m.similar && m.similar.example ? '<button class="g-btn g-btn-wide m-skybtn" data-act="m-similar"' + (st.busy ? " disabled" : "") + ">" +
-            (m.similar.photo ? "다시 찍어서 올리기" : "따라 찍어서 올리기") + "</button>" : "") +
-        "</div>" +
-
         (myId ? '<div class="g-card m-card m-group">' +
-          '<span class="g-mono">MISSION 03 · 팀 단체사진</span>' +
+          '<span class="g-mono">MISSION 02 · 팀 단체사진</span>' +
           (group ? '<img class="m-group-img" src="' + esc(G.imgUrl(group)) + '" alt="우리 팀 단체사진">' : "") +
           '<button class="g-btn g-btn-wide m-pinkbtn" data-act="m-group"' + (st.busy ? " disabled" : "") + ">" +
             (group ? "단체사진 다시 올리기" : "팀 단체사진 올리기 · 1장") + "</button>" +
-          '<p class="m-note">콜라주 포스터에 들어가요. 다시 올리면 바뀌어요.</p>' +
+          '<p class="m-note">점수 없이 콜라주 포스터에 들어가요. 다시 올리면 바뀌어요.</p>' +
         "</div>" : "") +
 
         (m.poster_public ? '<button class="g-btn g-btn-wide g-btn-dark" data-act="poster-view">콜라주 포스터 보기</button>' : "") +

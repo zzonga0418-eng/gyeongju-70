@@ -302,8 +302,7 @@
         return '<div class="a-group">' + (ph ? '<img src="' + esc(G.imgUrl(ph)) + '" alt="" loading="lazy">' : '<span class="a-hint">아직</span>') +
           '<span class="a-team">' + G.avatar(t, 20) + "<span>" + esc(t.name) + "</span></span></div>";
       }).join("") + "</div>" +
-      '<p class="a-hint">우리 가족 사진·사진 교체는 "포스터" 탭에서 해요.</p>' +
-      similarHtml();
+      '<p class="a-hint">우리 가족 사진·사진 교체는 "포스터" 탭에서 해요.</p>';
   }
 
   // M2 사진 유사도: 예시 사진 · 배정 방식 · 팀 사진 · 비교 이미지
@@ -395,7 +394,6 @@
     var g = ui.open && G.adminBoard ? currentGame() : null;
     if (act === "a-tab") {
       ui.tab = b.dataset.tab; ui.msg = "";
-      if (ui.tab === "mission") loadSimilar();
       if (ui.tab === "set") G.rpc("admin_dad_progress", { p_token: G.adminToken }).then(function (d) { ui.dad = d; render(); }, fail);
       renderAll();
     } else if (act === "a-hide") {
